@@ -1,91 +1,143 @@
-# Import the FastAPI class - this is the main building block for creating APIs
+# Import the FastAPI class - main framework component
 from fastapi import FastAPI
 
-# Import SQLAlchemy components for database operations
-# create_engine: creates a connection to the database
-# text: allows us to write raw SQL queries safely
-from sqlalchemy import create_engine, text
+# Import our routers from the interfaces layer
+# These routers handle different groups of endpoints
+from interfaces.api.routers import health, menu
 
-# Step 1: Create the FastAPI application instance
-# This is like turning on your API server
-# Think of it as opening a restaurant - this creates the building
+
+"""
+Main FastAPI Application Entry Point
+
+This is the composition root - where we assemble all the pieces:
+- Create the FastAPI app
+- Register routers
+- Configure middleware (future)
+- Set up app-level settings
+
+COMPARE TO MODULE 0:
+Module 0: Everything in one file (main.py)
+- Routes defined here
+- Database setup here
+- Business logic mixed with HTTP handling
+
+Module 1: Clean Architecture (this file)
+- Routes organized in routers (health, menu)
+- Business logic in use cases (application layer)
+- Data access in repositories (infrastructure layer)
+- This file just assembles the pieces
+
+BENEFITS:
+- Organized: each router handles related endpoints
+- Testable: can test routes, use cases, and repositories independently
+- Maintainable: easy to find and modify specific functionality
+- Scalable: adding features means adding routers, not growing one huge file
+"""
+
+
+# Create the FastAPI application instance
+# This is the main app that will run on the server
 app = FastAPI(
-    title="OpenCafe Lite API",              # Name shown in the API documentation
-    description="Module 0: Smoke Test",     # Brief description of what this API does
-    version="0.1.0"                         # Version number (we start at 0.1.0)
+    # Application metadata (shown in OpenAPI docs at /docs)
+    title="OpenCafe Lite API",  # Name of your API
+    description="Module 1: Clean Architecture with Menu Listing",  # Brief description
+    version="0.2.0",  # Semantic versioning: 0.2.0 means Module 1 (breaking change from 0.1.0)
+
+    # Future: you might add:
+    # contact={"name": "API Support", "email": "support@opencafe.example"},
+    # license_info={"name": "MIT"},
+    # terms_of_service="https://opencafe.example/terms",
 )
 
-# Step 2: Set up database connection
-# SQLite is a file-based database - no server needed
-# The database will be stored in a file called 'test.db' in the same folder
-DATABASE_URL = "sqlite:///./test.db"
 
-# Create the database engine (the connection manager)
-# connect_args={"check_same_thread": False} allows FastAPI to use SQLite safely
-# Without this, SQLite would only work in single-threaded mode
-engine = create_engine(
-    DATABASE_URL,                           # Where to find/create the database
-    connect_args={"check_same_thread": False}  # Allow multi-threaded access
-)
+# Register routers with the application
+# Each router handles a group of related endpoints
 
-# Step 3: Define a health check endpoint
-# The @app.get() decorator means "when someone visits /health, run this function"
-# Decorators add special behavior to functions - here it registers an API endpoint
-@app.get("/health")
-def health_check():
-    """
-    Health check endpoint - confirms the API is running and database works.
+# Health check endpoints (GET /health)
+# These routers are like plugins - they add their routes to the app
+app.include_router(health.router)
+# Now our app responds to GET /health (handled by health router)
 
-    Returns:
-        dict: A JSON response with status and database connection info
-    """
+# Menu endpoints (GET /menu/items)
+app.include_router(menu.router)
+# Now our app responds to GET /menu/items (handled by menu router)
 
-    # Try to connect to the database and run a test query
-    try:
-        # Create a connection to the database
-        # 'with' ensures the connection closes automatically when done
-        with engine.connect() as connection:
-            # Execute a simple SQL query: SELECT 1
-            # This is the simplest query possible - just returns the number 1
-            # It proves the database connection works
-            result = connection.execute(text("SELECT 1"))
+# Why use routers?
+# - Organization: related endpoints grouped together
+# - Separation of concerns: each router handles one area
+# - Modularity: can enable/disable routers easily
+# - Reusability: routers can be shared across apps
+# - Clean: main.py stays small and focused
 
-            # Fetch the result to confirm the query actually ran
-            # fetchone() gets one row from the result
-            result.fetchone()
 
-        # If we got here, database connection worked!
-        db_status = "connected"
-
-    except Exception as e:
-        # If anything went wrong (database file locked, permissions issue, etc.)
-        # Store the error message so we can debug
-        db_status = f"error: {str(e)}"
-
-    # Return a dictionary - FastAPI automatically converts this to JSON
-    # JSON is the standard format for API responses
-    return {
-        "status": "healthy",                    # API is running
-        "message": "OpenCafe API is ready!",    # Friendly message
-        "database": db_status                   # Database connection result
-    }
-
-# Step 4: Root endpoint - the homepage of your API
-@app.get("/")
+# Root endpoint - the "home page" of the API
+@app.get("/")  # Decorator registers this function as handling GET /
 def read_root():
     """
-    Root endpoint - returns a welcome message.
+    Root endpoint - provides basic API information and navigation.
 
-    When someone visits http://localhost:8000/ they see this response.
-    This is like the front door of your API.
-
+    This is a simple endpoint that helps users discover the API.
     Returns:
-        dict: Welcome message with information about the API
+        dict: Welcome message and links to important endpoints
+
+    Response Example:
+        {
+            "message": "Welcome to OpenCafe Lite!",
+            "version": "0.2.0",
+            "module": "Module 1: Clean Architecture",
+            "endpoints": {
+                "health": "/health",
+                "menu": "/menu/items",
+                "docs": "/docs"
+            }
+        }
+
+    Why this endpoint?
+    - Sanity check: if you visit http://localhost:8000/ you see something
+    - Discovery: tells users where to find actual functionality
+    - Docs: /docs link leads to interactive API documentation
     """
 
-    # Return helpful information about where to find API documentation
+    # Return a dictionary with API information
+    # FastAPI automatically converts this to JSON
     return {
-        "message": "Welcome to OpenCafe Lite!",
-        "docs": "Visit /docs for interactive API documentation",
-        "health": "Visit /health to check if the API is running properly"
+        "message": "Welcome to OpenCafe Lite!",  # Friendly greeting
+        "version": "0.2.0",  # Current version (matches app definition above)
+        "module": "Module 1: Clean Architecture",  # Which lesson this implements
+        "endpoints": {  # Directory of available endpoints
+            "health": "/health",  # Health check endpoint
+            "menu": "/menu/items",  # Menu listing endpoint
+            "docs": "/docs"  # Auto-generated interactive documentation
+        }
+        # Future: might add
+        # "status": "operational",
+        # "environment": "development",
+        # "uptime": calculate_uptime()
     }
+
+
+# Note: We removed the database setup and health check from here
+# They now live in health.router (interfaces/api/routers/health.py)
+# This makes main.py much cleaner and focused
+
+# Note: We removed the business logic from here
+# It now lives in use cases (application/use_cases/)
+# This separates HTTP concerns from business logic
+
+# Note: We removed direct database queries from here
+# They now live in repositories (infrastructure/persistence/)
+# This separates data access from HTTP and business logic
+
+# This file is now SMALL and FOCUSED - just app setup and router registration
+# That's the goal of Clean Architecture!
+
+
+# How to run this:
+# 1. Activate virtual environment: source .venv/bin/activate
+# 2. Run with uvicorn: uvicorn main:app --reload
+# 3. Visit http://localhost:8000 for root endpoint
+# 4. Visit http://localhost:8000/docs for interactive docs
+# 5. Visit http://localhost:8000/menu/items for menu listing
+
+# In production, you'd run with:
+# uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
