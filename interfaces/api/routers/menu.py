@@ -4,18 +4,15 @@ from fastapi import APIRouter, Depends  # Depends is used for dependency injecti
 # Import type hints
 from typing import List
 
-# Import Pydantic for request/response models
-# Pydantic models handle validation and serialization at the API boundary
-from pydantic import BaseModel, Field, field_serializer
-
-# Import Decimal for monetary values
-from decimal import Decimal
-
 # Import our use case from application layer
 from application.use_cases.list_menu_items import ListMenuItems
 
 # Import the dependency function that provides the use case
 from interfaces.api.dependencies import get_list_menu_items_use_case
+
+# Import the DTO from schemas directory
+# DTOs are now organized in interfaces/api/schemas/ for better structure
+from interfaces.api.schemas.menu import MenuItemResponse
 
 
 """
@@ -41,67 +38,8 @@ router = APIRouter(
     tags=["menu"]    # Groups endpoints in OpenAPI docs under "menu"
 )
 
-
-class MenuItemResponse(BaseModel):
-    """
-    Pydantic response model for a menu item.
-
-    This is a DATA TRANSFER OBJECT (DTO):
-    - Used at the API boundary (HTTP requests/responses)
-    - Separate from domain entity (MenuItem)
-    - Handles JSON serialization/validation
-
-    WHY SEPARATE FROM DOMAIN ENTITY?
-    - Domain entity (MenuItem): represents business concept
-    - Response model (this): represents API contract
-    - They might evolve independently
-    - API might hide/transform some fields
-    - API might combine multiple entities
-    - Domain stays pure, API layer handles HTTP concerns
-
-    Example differences:
-    - Domain might have internal IDs we don't expose
-    - API might format dates differently
-    - API might add computed fields (like full_url)
-    - Domain might have methods, DTOs are just data
-    """
-
-    # Unique identifier for the menu item
-    id: str
-
-    # Display name shown to customers
-    name: str
-
-    # Brief description of the item
-    description: str
-
-    # Price with exactly 2 decimal places (e.g., 2.50 not 2.5)
-    # Field() lets us add validation and metadata
-    # decimal_places=2 ensures consistent formatting: $2.50, not $2.5 or $2.500
-    price: Decimal = Field(decimal_places=2)
-
-    # Category this item belongs to (e.g., "coffee", "pastry")
-    category: str
-
-    # Whether item is currently available to order
-    available: bool
-
-    # Custom serializer for Decimal fields
-    # Pydantic v2 requires explicit serialization for Decimal types
-    # This converts Decimal to float for JSON (float is standard for API responses)
-    @field_serializer('price')
-    def serialize_price(self, price: Decimal, _info):
-        """Convert Decimal price to float for JSON serialization."""
-        return float(price)
-        # Note: In production APIs dealing with money, you might prefer:
-        # return str(price)  # Keeps exact precision, avoids float rounding issues
-        # But float is more convenient for most API clients
-
-    # Future: we might add computed fields
-    # @property
-    # def formatted_price(self) -> str:
-    #     """Return price formatted as currency"""
-    #     return f"${self.price:.2f}"
+# Note: MenuItemResponse DTO has been moved to interfaces/api/schemas/menu.py
+# This keeps DTOs organized in one place and avoids duplication
 
 
 @router.get("/items", response_model=List[MenuItemResponse])

@@ -3,7 +3,7 @@ from fastapi import FastAPI
 
 # Import our routers from the interfaces layer
 # These routers handle different groups of endpoints
-from interfaces.api.routers import health, menu
+from interfaces.api.routers import health, menu, tables, orders
 
 
 """
@@ -40,8 +40,8 @@ BENEFITS:
 app = FastAPI(
     # Application metadata (shown in OpenAPI docs at /docs)
     title="OpenCafe Lite API",  # Name of your API
-    description="Module 1: Clean Architecture with Menu Listing",  # Brief description
-    version="0.2.0",  # Semantic versioning: 0.2.0 means Module 1 (breaking change from 0.1.0)
+    description="Module 2: Domain Modeling, DTOs & Use Cases",  # Brief description
+    version="0.3.0",  # Semantic versioning: 0.3.0 means Module 2
 
     # Future: you might add:
     # contact={"name": "API Support", "email": "support@opencafe.example"},
@@ -61,6 +61,14 @@ app.include_router(health.router)
 # Menu endpoints (GET /menu/items)
 app.include_router(menu.router)
 # Now our app responds to GET /menu/items (handled by menu router)
+
+# Table endpoints (GET /tables, GET /tables/{id})
+app.include_router(tables.router)
+# Now our app responds to table-related endpoints
+
+# Order endpoints (POST /orders)
+app.include_router(orders.router)
+# Now our app responds to order-related endpoints
 
 # Why use routers?
 # - Organization: related endpoints grouped together
@@ -102,11 +110,14 @@ def read_root():
     # FastAPI automatically converts this to JSON
     return {
         "message": "Welcome to OpenCafe Lite!",  # Friendly greeting
-        "version": "0.2.0",  # Current version (matches app definition above)
-        "module": "Module 1: Clean Architecture",  # Which lesson this implements
+        "version": "0.3.0",  # Current version (matches app definition above)
+        "module": "Module 2: Domain Modeling, DTOs & Use Cases",  # Which lesson this implements
         "endpoints": {  # Directory of available endpoints
             "health": "/health",  # Health check endpoint
             "menu": "/menu/items",  # Menu listing endpoint
+            "tables": "/tables",  # Table listing endpoint
+            "create_order": "POST /orders",  # Create order endpoint
+            "get_table": "/tables/{table_id}",  # Get specific table
             "docs": "/docs"  # Auto-generated interactive documentation
         }
         # Future: might add
