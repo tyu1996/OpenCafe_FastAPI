@@ -2,7 +2,7 @@
 import pytest
 
 # Import datetime and Decimal for test data
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 # Import the entities we're testing
@@ -163,7 +163,7 @@ class TestOrder:
             table_id="table-001",
             items=items,
             status=OrderStatus.PENDING,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
         # Act
@@ -195,7 +195,7 @@ class TestOrder:
             table_id="table-001",
             items=items,
             status=OrderStatus.PENDING,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
         # Act
@@ -214,7 +214,7 @@ class TestOrder:
                 table_id="table-001",
                 items=[],  # Invalid - empty list!
                 status=OrderStatus.PENDING,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
 
     def test_order_status_is_mutable(self):
@@ -233,7 +233,7 @@ class TestOrder:
             table_id="table-001",
             items=items,
             status=OrderStatus.PENDING,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
         # Act - change status (this should work because Order is NOT frozen)
@@ -266,6 +266,6 @@ class TestOrder:
                 table_id="table-001",
                 items=items,
                 status=status,
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(timezone.utc),
             )
             assert order.status == status

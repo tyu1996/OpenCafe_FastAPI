@@ -2,7 +2,7 @@
 import pytest
 
 # Import required types
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 
@@ -251,9 +251,9 @@ class TestPlaceOrder:
         )
 
         # Act
-        before = datetime.utcnow()
+        before = datetime.now(timezone.utc)
         order = place_order_use_case.execute(request)
-        after = datetime.utcnow()
+        after = datetime.now(timezone.utc)
 
         # Assert - created_at should be between before and after
         assert order.created_at is not None

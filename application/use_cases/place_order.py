@@ -1,5 +1,5 @@
 # Import datetime for timestamps
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Import Decimal for precise money calculations
 from decimal import Decimal
@@ -170,9 +170,10 @@ class PlaceOrder:
         order_id = str(uuid.uuid4())
 
         # STEP 4: Get current timestamp
-        # datetime.utcnow() returns current UTC time
+        # datetime.now(timezone.utc) returns current UTC time (modern Python 3.11+ style)
         # Use UTC (not local time) for consistency across timezones
-        created_at = datetime.utcnow()
+        # Note: datetime.utcnow() is deprecated in Python 3.12+
+        created_at = datetime.now(timezone.utc)
 
         # STEP 5: Create Order entity (aggregate root)
         # This is where domain validation happens!
