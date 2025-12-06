@@ -1,11 +1,26 @@
-# Import the concrete repository implementations
-# Infrastructure layer - this is where we decide which adapters to use
+# Import database session management
+# This is the new dependency for Module 3 - database sessions
+from fastapi import Depends
+from sqlalchemy.orm import Session
+from infrastructure.persistence.database import get_db_session
+
+# Import the SQLAlchemy repository implementations (NEW in Module 3)
+# We're switching from in-memory to database-backed repositories
+from infrastructure.persistence.sqlalchemy_menu_repository import SQLAlchemyMenuRepository
+from infrastructure.persistence.sqlalchemy_category_repository import SQLAlchemyCategoryRepository
+from infrastructure.persistence.sqlalchemy_table_repository import SQLAlchemyTableRepository
+from infrastructure.persistence.sqlalchemy_order_repository import SQLAlchemyOrderRepository
+
+# Keep in-memory repositories imported for reference (used in unit tests)
+# We don't delete them - they're still valuable for testing!
 from infrastructure.persistence.in_memory_menu_repository import InMemoryMenuRepository
 from infrastructure.persistence.in_memory_category_repository import InMemoryCategoryRepository
 from infrastructure.persistence.in_memory_table_repository import InMemoryTableRepository
 from infrastructure.persistence.in_memory_order_repository import InMemoryOrderRepository
 
 # Import use cases from application layer
+# NOTE: Use cases don't change! Same code works with both in-memory and database repos
+# This is the power of the repository pattern and dependency injection
 from application.use_cases.list_menu_items import ListMenuItems
 from application.use_cases.list_menu_categories import ListMenuCategories
 from application.use_cases.get_table import GetTable
@@ -35,168 +50,192 @@ This file is the "composition root" - where we wire up our dependencies.
 """
 
 
-# Module-level singleton repositories
-# These create ONE instance of each repository that's reused across all requests
-# This is a simple approach for in-memory repositories
-# Note: Module-level variables are created once when Python imports the module
-_menu_repository = InMemoryMenuRepository()
-_category_repository = InMemoryCategoryRepository()
-_table_repository = InMemoryTableRepository()
-_order_repository = InMemoryOrderRepository()
+# ===== MODULE 3 CHANGE: Database-backed repositories =====
+# We NO LONGER use module-level singletons.
+# Instead, each request gets its own database session via FastAPI's DI.
+# Sessions are created per-request and closed automatically after response.
 
-# Why singletons here?
-# - For in-memory repositories, we want to share the same data across requests
-# - If we created new instances each time, each request would see empty data!
-# - This simulates a shared database that persists across requests
-# - Later with a real database, we'd use connection pooling instead
+# Why per-request sessions?
+# - Isolation: each request has independent transaction
+# - Thread safety: no shared state between concurrent requests
+# - Automatic cleanup: sessions close even if exception occurs
+# - Connection pooling: SQLAlchemy reuses connections efficiently
 
 
-def get_menu_repository():
+def get_menu_repository(db: Session = Depends(get_db_session)):
     """
-    Dependency function that provides the MenuRepository.
+    Dependency function that provides the MenuRepository (DATABASE VERSION).
+
+    MODULE 3 CHANGE:
+    - Now accepts a database session as a dependency
+    - Creates SQLAlchemyMenuRepository with that session
+    - Each request gets fresh repository with its own session
+
+    Args:
+        db: Database session injected by FastAPI
+            FastAPI calls get_db_session() and passes result here
 
     Returns:
-        MenuRepository: The repository instance to use for data access
+        MenuRepository: Database-backed repository instance
 
-    HOW FASTAPI USES THIS:
-    When you use Depends(get_menu_repository) in a route parameter,
-    FastAPI automatically calls this function and injects the result.
+    HOW THIS WORKS:
+    1. FastAPI sees db: Session = Depends(get_db_session)
+    2. FastAPI calls get_db_session() to create a session
+    3. FastAPI passes that session to this function as 'db'
+    4. We create SQLAlchemyMenuRepository with that session
+    5. We return the repository to the route handler
+    6. After route finishes, FastAPI closes the session (via yield in get_db_session)
 
     Example:
         @router.get("/items")
         def list_items(repo = Depends(get_menu_repository)):
-            # FastAPI calls get_menu_repository() and passes result as 'repo'
+            # repo is SQLAlchemyMenuRepository with a fresh session
             items = repo.list_all_items()
             return items
+            # Session automatically closes after return
 
-    WHY A FUNCTION?
-    - FastAPI's DI system expects functions
-    - Functions can do setup/teardown (like opening/closing database connections)
-    - Functions can check request context (like auth tokens)
-    - For now, we just return the singleton, but we have flexibility for later
+    POWER OF ABSTRACTION:
+    - Use cases don't know this changed!
+    - Routes don't know this changed!
+    - Only this file changed - everything else is the same
+    - Could switch back to in-memory by changing one line here
     """
-    # Return the singleton repository instance
-    return _menu_repository
-
-    # In a more complex system, this might:
-    # - Check if user is authenticated
-    # - Create a database session
-    # - Do request-specific setup
-    # - Log the access
-    # But for now, simple is good!
+    # Create database-backed repository with the session
+    # This replaces: return _menu_repository (old in-memory version)
+    return SQLAlchemyMenuRepository(session=db)
 
 
-def get_list_menu_items_use_case():
+def get_list_menu_items_use_case(
+    menu_repo = Depends(get_menu_repository)
+):
     """
     Dependency function that provides the ListMenuItems use case.
+
+    MODULE 3 CHANGE:
+    - Now uses Depends() to inject menu repository
+    - FastAPI handles the dependency chain automatically
+
+    Args:
+        menu_repo: Injected by FastAPI via Depends(get_menu_repository)
 
     Returns:
         ListMenuItems: An instance of the use case, with repository already injected
 
     This is a FACTORY FUNCTION - it creates and configures the use case.
 
-    HOW THIS WORKS:
-    1. We call get_menu_repository() to get the repository
-    2. We create a ListMenuItems instance and inject the repository
-    3. We return the configured use case
-    4. FastAPI injects this into our route handlers
+    HOW THIS WORKS (Module 3 version):
+    1. FastAPI sees menu_repo = Depends(get_menu_repository)
+    2. FastAPI calls get_menu_repository() which needs a Session
+    3. FastAPI calls get_db_session() to create a Session
+    4. FastAPI passes Session to get_menu_repository()
+    5. get_menu_repository() returns SQLAlchemyMenuRepository
+    6. FastAPI passes that repository to this function as menu_repo
+    7. We create ListMenuItems with that repository
+    8. We return the configured use case
 
     Example usage in a route:
         @router.get("/items")
         def list_items(use_case = Depends(get_list_menu_items_use_case)):
             # FastAPI gives us a fully configured use case
             # The use case already has its repository dependency
+            # The repository already has its session dependency
             items = use_case.execute()
             return items
-
-    WHY THIS PATTERN?
-    - Composition: we compose the use case from its dependencies
-    - Testability: in tests, we can provide a different function
-    - Single place: all wiring happens here, not scattered in routes
-    - Type safety: return type tells you exactly what you get
     """
 
-    # Step 1: Get the repository dependency
-    # We could also use Depends() here for more complex scenarios
-    repository = get_menu_repository()
+    # Create the use case with the injected repository
+    # FastAPI already gave us the repository via Depends()
+    use_case = ListMenuItems(menu_repository=menu_repo)
 
-    # Step 2: Create the use case with its dependency injected
-    # This is manual dependency injection - we construct the object graph
-    use_case = ListMenuItems(menu_repository=repository)
-
-    # Step 3: Return the configured use case
+    # Return the configured use case
     return use_case
-
-    # Alternative (more advanced) approach:
-    # In larger apps, you might use a DI container like:
-    # - dependency_injector
-    # - punq
-    # - injector
-    # These automate the wiring, but add complexity
-    # For our size, manual wiring is clearer
 
 
 # ===== Category Dependencies =====
 
-def get_category_repository():
+def get_category_repository(db: Session = Depends(get_db_session)):
     """
-    Dependency function that provides the CategoryRepository.
+    Dependency function that provides the CategoryRepository (DATABASE VERSION).
 
-    Returns the singleton in-memory repository.
+    Args:
+        db: Database session injected by FastAPI
+
+    Returns:
+        CategoryRepository: Database-backed repository instance
     """
-    return _category_repository
+    # Create database-backed repository with session
+    return SQLAlchemyCategoryRepository(session=db)
 
 
-def get_list_menu_categories_use_case():
+def get_list_menu_categories_use_case(
+    category_repo = Depends(get_category_repository)
+):
     """
     Dependency function that provides the ListMenuCategories use case.
 
+    Args:
+        category_repo: Injected by FastAPI via Depends(get_category_repository)
+
     Returns:
         ListMenuCategories: Use case with repository already injected
-
-    Pattern: Get repository → Create use case → Return configured use case
     """
-    repository = get_category_repository()
-    use_case = ListMenuCategories(category_repository=repository)
+    use_case = ListMenuCategories(category_repository=category_repo)
     return use_case
 
 
 # ===== Table Dependencies =====
 
-def get_table_repository():
+def get_table_repository(db: Session = Depends(get_db_session)):
     """
-    Dependency function that provides the TableRepository.
+    Dependency function that provides the TableRepository (DATABASE VERSION).
 
-    Returns the singleton in-memory repository.
+    Args:
+        db: Database session injected by FastAPI
+
+    Returns:
+        TableRepository: Database-backed repository instance
     """
-    return _table_repository
+    # Create database-backed repository with session
+    return SQLAlchemyTableRepository(session=db)
 
 
-def get_get_table_use_case():
+def get_get_table_use_case(
+    table_repo = Depends(get_table_repository)
+):
     """
     Dependency function that provides the GetTable use case.
+
+    Args:
+        table_repo: Injected by FastAPI via Depends(get_table_repository)
 
     Returns:
         GetTable: Use case with repository already injected
     """
-    repository = get_table_repository()
-    use_case = GetTable(table_repository=repository)
+    use_case = GetTable(table_repository=table_repo)
     return use_case
 
 
 # ===== Order Dependencies =====
 
-def get_order_repository():
+def get_order_repository(db: Session = Depends(get_db_session)):
     """
-    Dependency function that provides the OrderRepository.
+    Dependency function that provides the OrderRepository (DATABASE VERSION).
 
-    Returns the singleton in-memory repository.
-    This repository stores orders created during this server session.
+    Args:
+        db: Database session injected by FastAPI
+
+    Returns:
+        OrderRepository: Database-backed repository instance
     """
-    return _order_repository
+    # Create database-backed repository with session
+    return SQLAlchemyOrderRepository(session=db)
 
 
-def get_place_order_use_case():
+def get_place_order_use_case(
+    order_repo = Depends(get_order_repository),
+    table_repo = Depends(get_table_repository),
+    menu_repo = Depends(get_menu_repository)
+):
     """
     Dependency function that provides the PlaceOrder use case.
 
@@ -205,17 +244,23 @@ def get_place_order_use_case():
     - TableRepository: to validate table exists
     - MenuRepository: to look up item details and prices
 
+    MODULE 3 CHANGE:
+    - All three repositories now use Depends() for injection
+    - FastAPI manages the entire dependency graph automatically
+    - Each repository gets its own database session
+
+    Args:
+        order_repo: Injected by FastAPI via Depends(get_order_repository)
+        table_repo: Injected by FastAPI via Depends(get_table_repository)
+        menu_repo: Injected by FastAPI via Depends(get_menu_repository)
+
     Returns:
         PlaceOrder: Use case with all 3 repositories injected
 
-    This demonstrates multi-repository coordination!
+    This demonstrates multi-repository coordination with database persistence!
     """
-    # Get all three repository dependencies
-    order_repo = get_order_repository()
-    table_repo = get_table_repository()
-    menu_repo = get_menu_repository()
-
     # Create use case with all dependencies injected
+    # FastAPI already gave us all three repositories via Depends()
     # PlaceOrder needs all three repositories to do its job
     use_case = PlaceOrder(
         order_repository=order_repo,
@@ -226,18 +271,21 @@ def get_place_order_use_case():
     return use_case
 
 
-# ===== Summary =====
+# ===== Summary (Updated for Module 3) =====
 # This file now provides dependency functions for:
-# - 4 repositories (menu, category, table, order)
-# - 4 use cases (list items, list categories, get table, place order)
+# - 4 repositories (menu, category, table, order) - NOW DATABASE-BACKED!
+# - 4 use cases (list items, list categories, get table, place order) - UNCHANGED!
 #
-# Pattern is consistent:
-# 1. Create singleton repositories at module level
-# 2. Provide get_X_repository() functions
-# 3. Provide get_X_use_case() functions that wire up dependencies
+# Pattern (Module 3 version):
+# 1. Import SQLAlchemy repository implementations
+# 2. get_X_repository(db: Session = Depends(get_db_session)) - create repo with session
+# 3. get_X_use_case() - same as before, wire up dependencies
 #
-# In Module 3, when we switch to SQLAlchemy:
-# - We'll replace InMemory* with SQLAlchemy* implementations
-# - The dependency functions stay the same!
-# - Use cases don't change at all!
-# That's the power of dependency injection!
+# What changed in Module 3?
+# - Repository dependency functions now accept database session
+# - They create SQLAlchemy* repos instead of InMemory* repos
+# - Use cases stay EXACTLY the same!
+# - Routes stay EXACTLY the same!
+# - Domain layer stays EXACTLY the same!
+#
+# Only this file changed - that's the power of clean architecture!

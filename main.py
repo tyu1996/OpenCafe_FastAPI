@@ -40,8 +40,8 @@ BENEFITS:
 app = FastAPI(
     # Application metadata (shown in OpenAPI docs at /docs)
     title="OpenCafe Lite API",  # Name of your API
-    description="Module 2: Domain Modeling, DTOs & Use Cases",  # Brief description
-    version="0.3.0",  # Semantic versioning: 0.3.0 means Module 2
+    description="Module 3: Persistence, Repositories & Migrations",  # Brief description
+    version="0.4.0",  # Semantic versioning: 0.4.0 means Module 3
 
     # Future: you might add:
     # contact={"name": "API Support", "email": "support@opencafe.example"},
