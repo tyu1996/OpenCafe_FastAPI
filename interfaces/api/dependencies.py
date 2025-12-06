@@ -247,7 +247,7 @@ def get_place_order_use_case(
     MODULE 3 CHANGE:
     - All three repositories now use Depends() for injection
     - FastAPI manages the entire dependency graph automatically
-    - Each repository gets its own database session
+    - All repositories in a single request share the same database session (FastAPI caches dependencies per request)
 
     Args:
         order_repo: Injected by FastAPI via Depends(get_order_repository)

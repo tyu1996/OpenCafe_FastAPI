@@ -11,7 +11,10 @@ from application.use_cases.get_table import GetTable
 from interfaces.api.schemas.tables import TableResponse
 
 # Import dependency functions
-from interfaces.api.dependencies import get_get_table_use_case
+from interfaces.api.dependencies import get_get_table_use_case, get_table_repository
+
+# Import repository interface for type hints
+from domain.repositories.table_repository import TableRepository
 
 
 """
@@ -37,7 +40,9 @@ router = APIRouter(
 
 
 @router.get("", response_model=List[TableResponse])
-def list_tables():
+def list_tables(
+    table_repo: TableRepository = Depends(get_table_repository),  # DI for database-backed repo
+):
     """
     List all tables in the cafe.
 
@@ -63,29 +68,22 @@ def list_tables():
         ...
     ]
 
-    HOW THIS WORKS:
-    1. We get table repository directly (shortcut for Module 2)
-    2. Repository returns List[Table] domain entities
+    HOW THIS WORKS (Module 3 - Database-backed):
+    1. FastAPI injects database-backed TableRepository via DI
+    2. Repository queries database and returns List[Table] entities
     3. We convert entities to DTOs (TableResponse)
     4. FastAPI serializes to JSON and returns HTTP 200
 
     Note: This endpoint takes a shortcut (no use case)
     In a stricter implementation, we'd create ListTables use case
-    But for Module 2, we keep it simple and direct
+    But for simplicity, we use the repository directly via DI
     In Module 5, we might add filtering:
     - Filter by availability (occupied vs open)
     - Filter by capacity (tables seating 4+ people)
     - Filter by location (patio, window, etc.)
     """
 
-    # Shortcut: Import repository directly
-    # (Normally we'd create a use case and use DI)
-    from infrastructure.persistence.in_memory_table_repository import InMemoryTableRepository
-
-    # Create repository instance
-    table_repo = InMemoryTableRepository()
-
-    # Get all tables from repository
+    # Get all tables from repository (now database-backed via DI)
     tables = table_repo.list_all_tables()
 
     # Convert Table entities → TableResponse DTOs

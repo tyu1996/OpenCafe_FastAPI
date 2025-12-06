@@ -10,7 +10,7 @@ Integration Tests for Menu API
 
 WHAT ARE INTEGRATION TESTS?
 - Test multiple components working together
-- Test the full stack: API -> use case -> repository
+- Test the full stack: API -> use case -> repository -> database
 - Test HTTP layer: routes, status codes, JSON serialization
 - More comprehensive than unit tests
 - Slower than unit tests (but still fast!)
@@ -25,9 +25,15 @@ WHY BOTH?
 - Integration tests: verify components integrate correctly
 - Unit: test the parts. Integration: test the whole.
 
+MODULE 3 UPDATE:
+- Tests now run against in-memory SQLite test database (not production)
+- Test database is seeded with consistent test data via conftest.py
+- Dependencies are overridden to use test database
+- Tests verify the full stack including database persistence
+
 THESE TESTS:
 - Use TestClient to make real HTTP requests
-- Hit actual API endpoints
+- Hit actual API endpoints backed by real database
 - Test the full request/response cycle
 - Verify JSON structure
 - Check status codes
@@ -128,7 +134,7 @@ class TestMenuAPI:
             assert item["available"] is True, f"Item {item['name']} should be available"
 
         # We should get fewer items than the total (some are unavailable)
-        # Our in-memory repository has 6 items, 1 is unavailable
+        # Test database has 6 items, 1 is unavailable (seeded in conftest.py)
         # So we should get 5 available items
         assert len(items) == 5, "Should return only available items (5 out of 6)"
 
@@ -148,7 +154,7 @@ class TestMenuAPI:
         has_unavailable = any(item["available"] is False for item in items)
         assert has_unavailable, "Should include unavailable items when only_available=false"
 
-        # Should get all 6 items from repository
+        # Should get all 6 items from test database
         assert len(items) == 6, "Should return all items (6 total)"
 
     def test_list_menu_items_includes_expected_sample_data(self, client):
@@ -165,7 +171,7 @@ class TestMenuAPI:
         # Extract names from response
         item_names = [item["name"] for item in items]
 
-        # Check for specific items we know exist in InMemoryMenuRepository
+        # Check for specific items we know exist in test database (seeded in conftest.py)
         assert "Espresso" in item_names, "Should include Espresso"
         assert "Cappuccino" in item_names, "Should include Cappuccino"
         assert "Croissant" in item_names, "Should include Croissant"
@@ -226,8 +232,8 @@ class TestMenuAPI:
         assert "version" in data, "Root should have 'version' field"
         assert "endpoints" in data, "Root should have 'endpoints' field"
 
-        # Version should be 0.3.0 (Module 2)
-        assert data["version"] == "0.3.0", "Version should be 0.3.0"
+        # Version should be 0.4.0 (Module 3)
+        assert data["version"] == "0.4.0", "Version should be 0.4.0"
 
     def test_openapi_docs_endpoint_works(self, client):
         """

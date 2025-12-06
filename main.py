@@ -110,8 +110,8 @@ def read_root():
     # FastAPI automatically converts this to JSON
     return {
         "message": "Welcome to OpenCafe Lite!",  # Friendly greeting
-        "version": "0.3.0",  # Current version (matches app definition above)
-        "module": "Module 2: Domain Modeling, DTOs & Use Cases",  # Which lesson this implements
+        "version": "0.4.0",  # Current version (matches app definition above)
+        "module": "Module 3: Persistence, Repositories & Migrations",  # Which lesson this implements
         "endpoints": {  # Directory of available endpoints
             "health": "/health",  # Health check endpoint
             "menu": "/menu/items",  # Menu listing endpoint
