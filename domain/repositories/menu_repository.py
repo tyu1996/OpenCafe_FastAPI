@@ -74,3 +74,41 @@ class MenuRepository(ABC):
         - Used when building orders (need to look up item by ID)
         """
         pass
+
+    @abstractmethod
+    def list_items(
+        self,
+        only_available: bool = True,
+        category_id: str | None = None,
+        search: str | None = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> List[MenuItem]:
+        """
+        List menu items with optional filtering, searching, and pagination.
+
+        MODULE 4 NEW METHOD - Enhanced querying capabilities.
+
+        Args:
+            only_available (bool): If True, return only available items. Default: True.
+            category_id (str | None): Filter by category ID. None means all categories.
+            search (str | None): Search text for name/description. None means no search.
+            limit (int): Maximum number of items to return. Default: 20.
+            offset (int): Number of items to skip (for pagination). Default: 0.
+
+        Returns:
+            List[MenuItem]: List of menu items matching filters (may be empty)
+
+        Why this method exists:
+        - More efficient than list_all_items() + filtering in memory
+        - Allows database to use indexes and optimize queries
+        - Supports pagination for large datasets
+        - Provides search and filtering capabilities
+
+        Implementation notes for adapters:
+        - Database adapters should use WHERE clauses and LIMIT/OFFSET
+        - In-memory adapters should filter the in-memory list
+        - Search should be case-insensitive
+        - All filters should combine with AND logic
+        """
+        pass

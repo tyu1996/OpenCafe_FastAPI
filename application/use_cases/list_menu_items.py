@@ -58,52 +58,71 @@ class ListMenuItems:
         # This means "don't access this from outside the class"
         self._menu_repository = menu_repository
 
-    def execute(self, only_available: bool = True) -> List[MenuItem]:
+    def execute(
+        self,
+        only_available: bool = True,
+        category_id: str | None = None,  # MODULE 4: Filter by category
+        search: str | None = None,  # MODULE 4: Search by name/description
+        limit: int = 20,  # MODULE 4: Pagination - max items to return
+        offset: int = 0  # MODULE 4: Pagination - items to skip
+    ) -> List[MenuItem]:
         """
-        Execute the use case: list menu items.
+        Execute the use case: list menu items with optional filtering, searching, and pagination.
 
-        This is where the actual business operation happens.
-        Method is called 'execute' by convention (like Command pattern).
+        MODULE 4 ENHANCEMENTS:
+        - Added category_id filter
+        - Added search functionality
+        - Added pagination support (limit/offset)
+        - Delegate filtering to repository layer (more efficient than filtering in memory)
 
         Args:
-            only_available (bool): If True, return only available items.
-                                   If False, return ALL items including unavailable.
-                                   Defaults to True because most customers only want to see available items.
+            only_available (bool): If True, return only available items. Default: True.
+            category_id (str | None): Filter by category ID. None means all categories.
+            search (str | None): Search text for name/description. None means no search filter.
+            limit (int): Maximum number of items to return. Default: 20.
+            offset (int): Number of items to skip (for pagination). Default: 0.
 
         Returns:
-            List[MenuItem]: List of menu items (may be empty if no items exist)
+            List[MenuItem]: List of menu items matching filters (may be empty)
 
-        Why 'only_available' parameter?
-        - Gives flexibility: customers see available, staff might see everything
-        - This is application logic (not domain) - it's about filtering for different views
-        - Business rule: "customers should only see available items" lives here
+        WHY DELEGATE TO REPOSITORY?
+        In Module 3, we fetched ALL items then filtered in memory.
+        In Module 4, we pass filters to repository so database can filter efficiently.
+
+        Benefits of database filtering:
+        - Faster: database only returns matching items (not all 10,000)
+        - Less memory: don't load all items into Python
+        - Database indexes: optimized for searching/filtering
+        - Pagination: only fetch items needed for current page
+
+        Example:
+            # Get second page of available coffee items matching "espresso"
+            use_case = ListMenuItems(menu_repository)
+            items = use_case.execute(
+                only_available=True,
+                category_id="cat-001",
+                search="espresso",
+                limit=20,
+                offset=20  # Skip first 20 items (page 1)
+            )
         """
 
-        # Step 1: Get ALL items from the repository
-        # We delegate data fetching to the repository - that's its job
-        # We don't know (or care) if items come from memory, database, or API
-        items = self._menu_repository.list_all_items()
+        # MODULE 4: Delegate filtering to repository layer
+        # The repository will build an efficient database query
+        # Instead of fetching everything and filtering in Python
+        items = self._menu_repository.list_items(
+            only_available=only_available,
+            category_id=category_id,
+            search=search,
+            limit=limit,
+            offset=offset
+        )
 
-        # Step 2: Apply filtering based on availability
-        # This is APPLICATION LOGIC: deciding which items to return
-        if only_available:
-            # List comprehension: keep only items where item.available is True
-            # [item for item in items if condition] is Python's filter syntax
-            items = [item for item in items if item.available]
-            # This is equivalent to:
-            # filtered_items = []
-            # for item in items:
-            #     if item.available:
-            #         filtered_items.append(item)
-            # items = filtered_items
-
-        # Step 3: Return the filtered list
-        # The caller (usually a router) will convert this to the appropriate response format
+        # Return the items
+        # Repository already applied all filters and pagination
         return items
 
-        # Note: More complex use cases might:
-        # - Validate inputs
-        # - Coordinate multiple repositories
-        # - Emit domain events
-        # - Handle transactions
-        # But we keep this simple for now (KISS principle)
+        # Note: We moved filtering logic from use case to repository
+        # Old way (Module 3): fetch all, filter in Python
+        # New way (Module 4): let database do the filtering
+        # This is more efficient for large datasets!

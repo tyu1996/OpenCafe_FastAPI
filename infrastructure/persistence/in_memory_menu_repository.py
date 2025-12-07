@@ -176,6 +176,78 @@ class InMemoryMenuRepository(MenuRepository):
         # - Idiomatic Python
         # - No risk of KeyError exception
 
+    def list_items(
+        self,
+        only_available: bool = True,
+        category_id: str | None = None,
+        search: str | None = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> List[MenuItem]:
+        """
+        List menu items with filtering, searching, and pagination.
+
+        MODULE 4 NEW METHOD - In-memory implementation of enhanced querying.
+
+        This does the same thing as SQLAlchemy version but with Python filtering.
+        Less efficient than database filtering but works for testing and small datasets.
+
+        Args:
+            only_available: If True, filter to available items only
+            category_id: If provided, filter to specific category
+            search: If provided, search in name and description
+            limit: Maximum items to return (pagination)
+            offset: Items to skip (pagination)
+
+        Returns:
+            List[MenuItem]: Filtered menu items
+
+        Time complexity: O(n) where n is total number of items
+        (Must iterate through all items to filter)
+        """
+        # Start with all items
+        # Convert dict values to list
+        items = list(self._items.values())
+
+        # FILTER 1: Availability (MODULE 4)
+        # Keep only available items if only_available is True
+        if only_available:
+            # List comprehension: keep items where available is True
+            items = [item for item in items if item.available]
+
+        # FILTER 2: Category (MODULE 4)
+        # Keep only items from specific category if category_id provided
+        if category_id is not None:
+            # List comprehension: keep items matching category
+            items = [item for item in items if item.category == category_id]
+
+        # FILTER 3: Search (MODULE 4)
+        # Keep only items with search text in name or description
+        if search is not None:
+            # Convert search to lowercase for case-insensitive matching
+            search_lower = search.lower()
+
+            # List comprehension with complex condition
+            # Keep item if search text appears in name OR description
+            items = [
+                item for item in items
+                if (search_lower in item.name.lower() or
+                    search_lower in item.description.lower())
+            ]
+
+        # PAGINATION (MODULE 4)
+        # Slice the list to get the requested page
+        # Example: offset=20, limit=10 returns items[20:30]
+        # Python slicing: list[start:end] where end = start + limit
+        items = items[offset:offset + limit]
+
+        # Return the filtered and paginated list
+        return items
+
+        # Note: In-memory filtering is less efficient than database filtering
+        # Database can use indexes and optimize queries
+        # But in-memory is fine for testing and small datasets
+
     # Future methods we might add:
     # def add_item(self, item: MenuItem) -> None:
     #     """Add a new item to the menu."""

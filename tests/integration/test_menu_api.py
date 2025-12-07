@@ -232,8 +232,8 @@ class TestMenuAPI:
         assert "version" in data, "Root should have 'version' field"
         assert "endpoints" in data, "Root should have 'endpoints' field"
 
-        # Version should be 0.4.0 (Module 3)
-        assert data["version"] == "0.4.0", "Version should be 0.4.0"
+        # Version should be 0.5.0 (Module 4)
+        assert data["version"] == "0.5.0", "Version should be 0.5.0"
 
     def test_openapi_docs_endpoint_works(self, client):
         """

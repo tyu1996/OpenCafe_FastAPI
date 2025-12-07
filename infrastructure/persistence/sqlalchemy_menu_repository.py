@@ -14,6 +14,9 @@ from decimal import Decimal
 # Import Session from SQLAlchemy - manages database transactions
 from sqlalchemy.orm import Session
 
+# Import SQLAlchemy query functions for complex queries (MODULE 4)
+from sqlalchemy import or_  # For OR conditions in queries
+
 # Import domain entity and repository interface
 # Infrastructure knows about domain (dependency flows inward)
 from domain.entities.menu import MenuItem
@@ -103,6 +106,100 @@ class SQLAlchemyMenuRepository(MenuRepository):
 
         # Convert database model to domain entity and return
         return self._model_to_entity(db_item)
+
+    def list_items(
+        self,
+        only_available: bool = True,
+        category_id: str | None = None,
+        search: str | None = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> List[MenuItem]:
+        """
+        List menu items with filtering, searching, and pagination.
+
+        MODULE 4 NEW METHOD - Enhanced querying with database optimization.
+
+        This method builds a SQL query dynamically based on filters.
+        Database does the filtering, not Python (much more efficient!).
+
+        Args:
+            only_available: If True, filter to available items only
+            category_id: If provided, filter to specific category
+            search: If provided, search in name and description
+            limit: Maximum items to return (pagination)
+            offset: Items to skip (pagination)
+
+        Returns:
+            List[MenuItem]: Filtered menu items as domain entities
+
+        SQL Example (when all filters applied):
+            SELECT * FROM menu_items
+            WHERE available = 1
+              AND category_id = 'cat-001'
+              AND (name LIKE '%espresso%' OR description LIKE '%espresso%')
+            LIMIT 20 OFFSET 0
+        """
+        # Start building the query
+        # This creates a SELECT query for MenuItemModel
+        # No WHERE clause yet - we'll add filters below
+        query = self._session.query(MenuItemModel)
+
+        # FILTER 1: Availability (MODULE 4)
+        # If only_available is True, filter to available=1 items
+        if only_available:
+            # Add WHERE clause: available = 1
+            # Note: SQLite stores booleans as 0/1 integers
+            query = query.filter(MenuItemModel.available == 1)
+
+        # FILTER 2: Category (MODULE 4)
+        # If category_id provided, filter to that category
+        if category_id is not None:
+            # Add WHERE clause: category_id = ?
+            # This uses parameterized query (safe from SQL injection)
+            query = query.filter(MenuItemModel.category_id == category_id)
+
+        # FILTER 3: Search (MODULE 4)
+        # If search text provided, search in name OR description
+        if search is not None:
+            # Create search pattern for LIKE query
+            # %text% matches "text" anywhere in the string
+            # Example: "%espresso%" matches "Double Espresso", "Espresso Shot"
+            search_pattern = f"%{search}%"
+
+            # Add WHERE clause with OR condition
+            # Search in both name and description fields
+            # ilike() is case-insensitive LIKE (espresso matches Espresso)
+            query = query.filter(
+                or_(  # OR condition (match either field)
+                    MenuItemModel.name.ilike(search_pattern),  # Search in name
+                    MenuItemModel.description.ilike(search_pattern)  # Search in description
+                )
+            )
+
+        # PAGINATION (MODULE 4)
+        # Apply limit and offset LAST (after all filters)
+        # Limit: maximum number of items to return
+        # Offset: number of items to skip (for page 2, 3, etc.)
+        # Example: offset=20, limit=10 returns items 21-30
+        query = query.limit(limit).offset(offset)
+
+        # Execute the query
+        # .all() runs the query and returns list of MenuItemModel objects
+        # Database returns only the filtered, paginated results
+        # Much more efficient than fetching all items and filtering in Python!
+        db_items = query.all()
+
+        # Convert database models to domain entities
+        # List comprehension calls _model_to_entity for each item
+        return [self._model_to_entity(item) for item in db_items]
+
+        # Query building summary:
+        # 1. Start with base query
+        # 2. Add WHERE clauses for filters (if provided)
+        # 3. Add LIMIT and OFFSET for pagination
+        # 4. Execute query (database does the work!)
+        # 5. Convert results to domain entities
 
     def _model_to_entity(self, model: MenuItemModel) -> MenuItem:
         """

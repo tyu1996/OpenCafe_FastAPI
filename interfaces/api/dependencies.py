@@ -11,17 +11,14 @@ from infrastructure.persistence.sqlalchemy_category_repository import SQLAlchemy
 from infrastructure.persistence.sqlalchemy_table_repository import SQLAlchemyTableRepository
 from infrastructure.persistence.sqlalchemy_order_repository import SQLAlchemyOrderRepository
 
-# Keep in-memory repositories imported for reference (used in unit tests)
-# We don't delete them - they're still valuable for testing!
-from infrastructure.persistence.in_memory_menu_repository import InMemoryMenuRepository
-from infrastructure.persistence.in_memory_category_repository import InMemoryCategoryRepository
-from infrastructure.persistence.in_memory_table_repository import InMemoryTableRepository
-from infrastructure.persistence.in_memory_order_repository import InMemoryOrderRepository
+# Note: In-memory repositories are used in unit tests (tests/unit/)
+# They're imported there directly, not from this file
 
 # Import use cases from application layer
 # NOTE: Use cases don't change! Same code works with both in-memory and database repos
 # This is the power of the repository pattern and dependency injection
 from application.use_cases.list_menu_items import ListMenuItems
+from application.use_cases.get_menu_item import GetMenuItem  # MODULE 4: New use case
 from application.use_cases.list_menu_categories import ListMenuCategories
 from application.use_cases.get_table import GetTable
 from application.use_cases.place_order import PlaceOrder
@@ -148,6 +145,37 @@ def get_list_menu_items_use_case(
     use_case = ListMenuItems(menu_repository=menu_repo)
 
     # Return the configured use case
+    return use_case
+
+
+def get_get_menu_item_use_case(
+    menu_repo = Depends(get_menu_repository)
+):
+    """
+    Dependency function that provides the GetMenuItem use case.
+
+    MODULE 4 NEW DEPENDENCY - For retrieving single menu item by ID.
+
+    Args:
+        menu_repo: Injected by FastAPI via Depends(get_menu_repository)
+
+    Returns:
+        GetMenuItem: Use case instance with repository injected
+
+    Example usage in a route:
+        @router.get("/items/{item_id}")
+        def get_item(
+            item_id: str,
+            use_case = Depends(get_get_menu_item_use_case)
+        ):
+            item = use_case.execute(item_id=item_id)
+            if item is None:
+                raise HTTPException(404, detail="Not found")
+            return item
+    """
+    # Create and return the use case with injected repository
+    # Same pattern as other use case dependencies
+    use_case = GetMenuItem(menu_repository=menu_repo)
     return use_case
 
 

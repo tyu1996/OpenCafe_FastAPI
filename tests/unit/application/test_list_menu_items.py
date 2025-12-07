@@ -60,6 +60,37 @@ class FakeMenuRepository(MenuRepository):
         # This is safer than self._items[item_id] which would raise KeyError
         return self._items.get(item_id)
 
+    def list_items(
+        self,
+        only_available: bool = True,
+        category_id: str | None = None,
+        search: str | None = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> List[MenuItem]:
+        """List items with filtering, searching, and pagination (MODULE 4)."""
+        # Start with all items
+        items = list(self._items.values())
+
+        # Filter by availability
+        if only_available:
+            items = [item for item in items if item.available]
+
+        # Filter by category
+        if category_id:
+            items = [item for item in items if item.category == category_id]
+
+        # Filter by search term (case-insensitive)
+        if search:
+            search_lower = search.lower()
+            items = [
+                item for item in items
+                if search_lower in item.name.lower() or search_lower in item.description.lower()
+            ]
+
+        # Apply pagination
+        return items[offset:offset + limit]
+
 
 class TestListMenuItems:
     """

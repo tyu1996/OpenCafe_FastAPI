@@ -40,6 +40,28 @@ class FakeMenuRepository(MenuRepository):
     def get_item_by_id(self, item_id: str) -> Optional[MenuItem]:
         return self._items.get(item_id)
 
+    def list_items(
+        self,
+        only_available: bool = True,
+        category_id: str | None = None,
+        search: str | None = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> List[MenuItem]:
+        """List items with filtering (MODULE 4)."""
+        items = list(self._items.values())
+        if only_available:
+            items = [item for item in items if item.available]
+        if category_id:
+            items = [item for item in items if item.category == category_id]
+        if search:
+            search_lower = search.lower()
+            items = [
+                item for item in items
+                if search_lower in item.name.lower() or search_lower in item.description.lower()
+            ]
+        return items[offset:offset + limit]
+
 
 class FakeTableRepository(TableRepository):
     """Fake table repository for testing"""

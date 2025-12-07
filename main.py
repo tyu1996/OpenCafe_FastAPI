@@ -40,8 +40,8 @@ BENEFITS:
 app = FastAPI(
     # Application metadata (shown in OpenAPI docs at /docs)
     title="OpenCafe Lite API",  # Name of your API
-    description="Module 3: Persistence, Repositories & Migrations",  # Brief description
-    version="0.4.0",  # Semantic versioning: 0.4.0 means Module 3
+    description="Module 4: Menu & Table APIs (DB-Backed, Tested)",  # Brief description
+    version="0.5.0",  # Semantic versioning: 0.5.0 means Module 4
 
     # Future: you might add:
     # contact={"name": "API Support", "email": "support@opencafe.example"},
@@ -110,14 +110,15 @@ def read_root():
     # FastAPI automatically converts this to JSON
     return {
         "message": "Welcome to OpenCafe Lite!",  # Friendly greeting
-        "version": "0.4.0",  # Current version (matches app definition above)
-        "module": "Module 3: Persistence, Repositories & Migrations",  # Which lesson this implements
+        "version": "0.5.0",  # Current version (matches app definition above)
+        "module": "Module 4: Menu & Table APIs (DB-Backed, Tested)",  # Which lesson this implements
         "endpoints": {  # Directory of available endpoints
             "health": "/health",  # Health check endpoint
-            "menu": "/menu/items",  # Menu listing endpoint
+            "menu_items": "/menu/items",  # Menu listing with filters
+            "menu_item": "/menu/items/{item_id}",  # Get single menu item (MODULE 4)
             "tables": "/tables",  # Table listing endpoint
+            "table": "/tables/{table_id}",  # Get specific table
             "create_order": "POST /orders",  # Create order endpoint
-            "get_table": "/tables/{table_id}",  # Get specific table
             "docs": "/docs"  # Auto-generated interactive documentation
         }
         # Future: might add
