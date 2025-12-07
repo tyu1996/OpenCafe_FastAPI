@@ -16,4 +16,7 @@ DATABASE_URL = os.getenv(
 )
 
 # Note: To switch to PostgreSQL, set DATABASE_URL environment variable:
-# export DATABASE_URL="postgresql://user:password@localhost:5432/opencafe"
+# Example (SQLAlchemy 2.x + psycopg2 driver):
+# export DATABASE_URL="postgresql+psycopg2://user:password@localhost:5432/opencafe"
+# Or with psycopg3 driver:
+# export DATABASE_URL="postgresql+psycopg://user:password@localhost:5432/opencafe"
