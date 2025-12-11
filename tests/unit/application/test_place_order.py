@@ -96,6 +96,15 @@ class FakeOrderRepository(OrderRepository):
     def get_order_by_id(self, order_id: str) -> Optional[Order]:
         return self._orders.get(order_id)
 
+    def get_open_order_for_table(self, table_id: str) -> Optional[Order]:
+        """Get any open order for a table (MODULE 5)."""
+        # Find any order for this table with PENDING or CONFIRMED status
+        for order in self._orders.values():
+            if (order.table_id == table_id and
+                order.status in [OrderStatus.PENDING, OrderStatus.CONFIRMED]):
+                return order
+        return None
+
 
 # ===== Test Fixtures =====
 # Fixtures are reusable test data that pytest provides to test functions
@@ -259,15 +268,19 @@ class TestPlaceOrder:
 
     def test_place_order_creates_unique_id(self, place_order_use_case):
         """Test that each order gets a unique ID"""
-        # Arrange
-        request = CreateOrderRequest(
+        # Arrange - MODULE 5: Use different tables since same table can't have 2 open orders
+        request1 = CreateOrderRequest(
             table_id="table-001",
             items=[OrderItemInput(item_id="item-001", quantity=1)],
         )
+        request2 = CreateOrderRequest(
+            table_id="table-002",  # Different table!
+            items=[OrderItemInput(item_id="item-001", quantity=1)],
+        )
 
-        # Act - create two orders
-        order1 = place_order_use_case.execute(request)
-        order2 = place_order_use_case.execute(request)
+        # Act - create two orders for different tables
+        order1 = place_order_use_case.execute(request1)
+        order2 = place_order_use_case.execute(request2)
 
         # Assert - IDs should be different
         assert order1.id != order2.id
@@ -297,13 +310,13 @@ class TestPlaceOrder:
         order_repo = FakeOrderRepository()
         use_case = PlaceOrder(order_repo, table_repo, menu_repo)
 
-        request = CreateOrderRequest(
+        request1 = CreateOrderRequest(
             table_id="table-001",
             items=[OrderItemInput(item_id="item-001", quantity=1)],
         )
 
-        # Act - place order
-        order = use_case.execute(request)
+        # Act - place first order
+        order = use_case.execute(request1)
 
         # Verify snapshot price
         assert order.items[0].unit_price == Decimal("2.50")
@@ -321,8 +334,12 @@ class TestPlaceOrder:
         menu_repo = FakeMenuRepository(sample_menu_items)
         use_case2 = PlaceOrder(order_repo, table_repo, menu_repo)
 
-        # Place another order
-        order2 = use_case2.execute(request)
+        # MODULE 5: Place order for different table (same table can't have 2 open orders)
+        request2 = CreateOrderRequest(
+            table_id="table-002",  # Different table!
+            items=[OrderItemInput(item_id="item-001", quantity=1)],
+        )
+        order2 = use_case2.execute(request2)
 
         # Assert - first order still has old price (snapshot!)
         assert order.items[0].unit_price == Decimal("2.50")

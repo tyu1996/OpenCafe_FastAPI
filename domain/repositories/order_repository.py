@@ -114,8 +114,44 @@ class OrderRepository(ABC):
         """
         pass  # Abstract method - no implementation here
 
-    # Note: In Module 5, we'll expand this repository with methods like:
+    @abstractmethod
+    def get_open_order_for_table(self, table_id: str) -> Optional[Order]:
+        """
+        Get any open (non-completed) order for a specific table.
+
+        This method checks if a table already has an active order.
+        Used to prevent multiple open orders for the same table (business rule).
+
+        "Open" means order is in PENDING or CONFIRMED status (not COMPLETED).
+        Once an order is COMPLETED, the table is available for new orders.
+
+        Args:
+            table_id (str): The ID of the table to check
+
+        Returns:
+            Optional[Order]: The open order if one exists, None if table is available
+
+        Why this method?
+        - Business rule: tables can only have one active order at a time
+        - Prevents race condition where two customers try to order for same table
+        - Use before creating new order: "Is this table already occupied?"
+
+        Example usage in PlaceOrder use case:
+        ```python
+        existing_order = repository.get_open_order_for_table(table_id)
+        if existing_order is not None:
+            raise ValueError(f"Table {table_id} already has an open order")
+        # Proceed to create new order
+        ```
+
+        Implementation notes:
+        - Query for orders where table_id matches AND status is PENDING or CONFIRMED
+        - Return first match (should only be one per business rule)
+        - Return None if no open orders found
+        """
+        pass
+
+    # Note: Future enhancements might include:
     # - list_orders_by_table(table_id: str) -> List[Order]
     # - list_orders_by_status(status: OrderStatus) -> List[Order]
     # - update_order_status(order_id: str, status: OrderStatus) -> None
-    # For now, we keep it simple: save and get.

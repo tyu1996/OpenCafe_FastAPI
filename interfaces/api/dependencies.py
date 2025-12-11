@@ -23,6 +23,12 @@ from application.use_cases.list_menu_categories import ListMenuCategories
 from application.use_cases.get_table import GetTable
 from application.use_cases.list_tables import ListTables  # MODULE 4: New use case for listing tables
 from application.use_cases.place_order import PlaceOrder
+from application.use_cases.get_order import GetOrder  # MODULE 5: Get order by ID
+from application.use_cases.get_open_order_for_table import GetOpenOrderForTable  # MODULE 5: Check table availability
+
+# Import pricing service for Module 5
+from application.services.pricing_service import PricingService
+from decimal import Decimal
 
 
 """
@@ -328,7 +334,97 @@ def get_place_order_use_case(
     return use_case
 
 
-# ===== Summary (Updated for Module 3) =====
+def get_get_order_use_case(
+    order_repo = Depends(get_order_repository)
+):
+    """
+    Dependency function that provides the GetOrder use case.
+
+    MODULE 5 NEW DEPENDENCY - For retrieving a single order by ID.
+
+    Args:
+        order_repo: Injected by FastAPI via Depends(get_order_repository)
+
+    Returns:
+        GetOrder: Use case instance with repository injected
+
+    Example usage in a route:
+        @router.get("/orders/{order_id}")
+        def get_order(
+            order_id: str,
+            use_case = Depends(get_get_order_use_case)
+        ):
+            order = use_case.execute(order_id=order_id)
+            if order is None:
+                raise HTTPException(404, detail="Order not found")
+            return order
+    """
+    # Create and return the use case with injected repository
+    use_case = GetOrder(order_repository=order_repo)
+    return use_case
+
+
+def get_get_open_order_for_table_use_case(
+    order_repo = Depends(get_order_repository)
+):
+    """
+    Dependency function that provides the GetOpenOrderForTable use case.
+
+    MODULE 5 NEW DEPENDENCY - For checking if a table has an active order.
+
+    Args:
+        order_repo: Injected by FastAPI via Depends(get_order_repository)
+
+    Returns:
+        GetOpenOrderForTable: Use case instance with repository injected
+
+    Example usage in a route:
+        @router.get("/tables/{table_id}/open-order")
+        def get_table_open_order(
+            table_id: str,
+            use_case = Depends(get_get_open_order_for_table_use_case)
+        ):
+            order = use_case.execute(table_id=table_id)
+            if order is None:
+                return {"message": "No active order for this table"}
+            return order
+    """
+    # Create and return the use case with injected repository
+    use_case = GetOpenOrderForTable(order_repository=order_repo)
+    return use_case
+
+
+def get_pricing_service():
+    """
+    Dependency function that provides the PricingService.
+
+    MODULE 5 NEW DEPENDENCY - For calculating order pricing with discounts.
+
+    Returns:
+        PricingService: Pricing service with default discount configured
+
+    Configuration:
+        - Default discount: 0% (no discount)
+        - Can be changed here to apply café-wide discount
+        - Example: PricingService(Decimal("10")) for 10% off
+
+    Example usage in a route:
+        @router.get("/orders/{order_id}/pricing")
+        def get_order_pricing(
+            order_id: str,
+            pricing_service = Depends(get_pricing_service)
+        ):
+            order = ... # Get order
+            pricing = pricing_service.calculate_order_pricing(order)
+            return pricing
+    """
+    # Create pricing service with default configuration
+    # For now: no default discount (Decimal("0"))
+    # In production, this might come from config/environment variable
+    return PricingService(default_discount_percentage=Decimal("0"))
+
+
+# ===== Summary (Updated for Module 5) =====
 # This file now provides dependency functions for:
 # - 4 repositories (menu, category, table, order) - NOW DATABASE-BACKED!
 # - 4 use cases (list items, list categories, get table, place order) - UNCHANGED!

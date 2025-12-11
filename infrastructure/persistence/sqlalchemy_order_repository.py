@@ -132,6 +132,45 @@ class SQLAlchemyOrderRepository(OrderRepository):
         # This handles both Order and its OrderItems
         return self._model_to_entity(db_order)
 
+    def get_open_order_for_table(self, table_id: str) -> Optional[Order]:
+        """
+        Get any open order for a specific table.
+
+        An "open" order is one that is NOT completed yet.
+        This checks for orders in PENDING or CONFIRMED status.
+
+        This implements a BUSINESS RULE: only one open order per table.
+        Before creating a new order, check if table already has an active order.
+
+        Args:
+            table_id: ID of the table to check
+
+        Returns:
+            Order if table has an open order, None if table is available
+
+        SQL equivalent:
+        SELECT * FROM orders
+        WHERE table_id = ? AND status IN ('pending', 'confirmed')
+        LIMIT 1
+        """
+        # Query for orders matching this table
+        # Filter for non-completed statuses (pending or confirmed)
+        # .first() returns first match or None
+        db_order = self._session.query(OrderModel).filter(
+            OrderModel.table_id == table_id,  # Match table
+            OrderModel.status.in_([  # Status is one of these
+                OrderStatus.PENDING.value,  # "pending"
+                OrderStatus.CONFIRMED.value,  # "confirmed"
+            ])
+        ).first()
+
+        # Return None if no open order found
+        if db_order is None:
+            return None
+
+        # Convert database model to domain entity
+        return self._model_to_entity(db_order)
+
     def _model_to_entity(self, model: OrderModel) -> Order:
         """
         Convert database models to Order entity.

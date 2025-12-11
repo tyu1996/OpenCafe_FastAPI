@@ -4,8 +4,8 @@ from datetime import datetime
 # Import Decimal for precise money handling
 from decimal import Decimal
 
-# Import List for lists of items
-from typing import List
+# Import List and Optional for type hints
+from typing import List, Optional
 
 # Import Pydantic BaseModel and validation helpers
 from pydantic import BaseModel, Field, field_serializer
@@ -276,3 +276,60 @@ class OrderResponse(BaseModel):
     #   "created_at": "2024-01-15T14:30:00",
     #   "total": 8.50
     # }
+
+
+class LineItemPriceResponse(BaseModel):
+    """
+    DTO for line item pricing breakdown in OrderPricingResponse.
+
+    Shows how each item's price was calculated.
+    This provides transparency for customers.
+
+    MODULE 5 - Pricing Engine
+    """
+    # Name of the item
+    item_name: str
+
+    # Quantity ordered
+    quantity: int
+
+    # Price per item
+    unit_price: Decimal = Field(decimal_places=2)
+
+    # Total for this line item (unit_price × quantity)
+    subtotal: Decimal = Field(decimal_places=2)
+
+    @field_serializer("unit_price", "subtotal")
+    def serialize_decimal(self, value: Decimal, _info) -> float:
+        """Convert Decimal to float for JSON."""
+        return float(value)
+
+
+class OrderPricingResponse(BaseModel):
+    """
+    DTO for order pricing breakdown.
+
+    Shows itemized pricing with discounts applied.
+    Used for transparent pricing display to customers.
+
+    MODULE 5 - Pricing Engine
+    """
+    # Breakdown of each line item
+    line_items: List[LineItemPriceResponse]
+
+    # Total before discount
+    subtotal: Decimal = Field(decimal_places=2)
+
+    # Discount amount (0 if no discount)
+    discount_amount: Decimal = Field(decimal_places=2)
+
+    # Why discount was applied (None if no discount)
+    discount_reason: Optional[str] = None
+
+    # Final total after discount
+    total: Decimal = Field(decimal_places=2)
+
+    @field_serializer("subtotal", "discount_amount", "total")
+    def serialize_decimal(self, value: Decimal, _info) -> float:
+        """Convert Decimal to float for JSON."""
+        return float(value)

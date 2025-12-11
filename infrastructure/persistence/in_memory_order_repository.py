@@ -144,6 +144,38 @@ class InMemoryOrderRepository(OrderRepository):
         # This is safer than self._orders[order_id] which raises KeyError
         return self._orders.get(order_id)
 
+    def get_open_order_for_table(self, table_id: str) -> Optional[Order]:
+        """
+        Get any open order for a specific table.
+
+        An "open" order is one that is NOT completed.
+        This checks for orders in PENDING or CONFIRMED status.
+
+        Used to enforce business rule: only one open order per table.
+
+        Args:
+            table_id: ID of the table to check
+
+        Returns:
+            Order if table has an open order, None if table is available
+
+        Implementation: Filter dictionary values for matching table and status.
+        """
+        # Import OrderStatus for comparison
+        from domain.entities.order import OrderStatus
+
+        # Loop through all orders in memory
+        for order in self._orders.values():
+            # Check if order is for this table AND is open (not completed)
+            # Open means PENDING or CONFIRMED (not COMPLETED)
+            if (order.table_id == table_id and
+                order.status in [OrderStatus.PENDING, OrderStatus.CONFIRMED]):
+                # Found an open order for this table
+                return order
+
+        # No open order found for this table
+        return None
+
     # Note: In Module 5, we'll expand this repository with methods like:
     #
     # def list_orders_by_table(self, table_id: str) -> List[Order]:

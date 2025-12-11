@@ -125,6 +125,18 @@ class PlaceOrder:
         if table is None:
             raise ValueError(f"Table with ID '{request.table_id}' not found")
 
+        # STEP 1.5 (MODULE 5): Check for existing open order
+        # BUSINESS RULE: Table can only have ONE open order at a time
+        # This prevents race conditions and confusion
+        existing_order = self._order_repository.get_open_order_for_table(request.table_id)
+
+        # If table already has an open order, reject the new order
+        if existing_order is not None:
+            raise ValueError(
+                f"Table '{request.table_id}' already has an open order (Order ID: {existing_order.id}). "
+                "Please complete or cancel the existing order before placing a new one."
+            )
+
         # STEP 2: Look up menu items and create OrderItem objects
         # This is the most complex part: converting from DTO to domain entities
         order_items = []  # Will hold OrderItem domain entities
