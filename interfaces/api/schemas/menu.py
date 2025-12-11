@@ -6,6 +6,43 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, field_serializer
 
 
+class MenuCategoryResponse(BaseModel):
+    """
+    DTO (Data Transfer Object) for menu category API responses.
+
+    This is a PYDANTIC MODEL that defines the API contract for categories.
+    MODULE 4: Used for GET /menu/categories and GET /menu/categories/{id}/items
+
+    WHY SEPARATE FROM MenuCategory ENTITY?
+    - Layer separation: API contracts live in interfaces/, not domain/
+    - Framework independence: domain doesn't depend on Pydantic
+    - API flexibility: can reshape data for API without changing domain
+
+    WHEN TO USE THIS:
+    - Returning data from GET /menu/categories
+    - Returning data from GET /menu/categories/{id}
+    """
+
+    # Unique identifier for this category
+    # Example: "cat-001" or "coffee-drinks"
+    id: str
+
+    # Display name of the category
+    # Example: "Coffee Drinks", "Pastries"
+    name: str
+
+    # Brief description of the category
+    # Example: "Hot and cold coffee beverages"
+    description: str
+
+    # Example JSON output:
+    # {
+    #   "id": "cat-001",
+    #   "name": "Coffee Drinks",
+    #   "description": "Hot and cold coffee beverages"
+    # }
+
+
 class MenuItemResponse(BaseModel):
     """
     DTO (Data Transfer Object) for menu item API responses.

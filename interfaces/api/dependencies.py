@@ -21,6 +21,7 @@ from application.use_cases.list_menu_items import ListMenuItems
 from application.use_cases.get_menu_item import GetMenuItem  # MODULE 4: New use case
 from application.use_cases.list_menu_categories import ListMenuCategories
 from application.use_cases.get_table import GetTable
+from application.use_cases.list_tables import ListTables  # MODULE 4: New use case for listing tables
 from application.use_cases.place_order import PlaceOrder
 
 
@@ -240,6 +241,34 @@ def get_get_table_use_case(
         GetTable: Use case with repository already injected
     """
     use_case = GetTable(table_repository=table_repo)
+    return use_case
+
+
+def get_list_tables_use_case(
+    table_repo = Depends(get_table_repository)
+):
+    """
+    Dependency function that provides the ListTables use case.
+
+    MODULE 4 NEW DEPENDENCY - For listing tables with optional area filtering.
+
+    Args:
+        table_repo: Injected by FastAPI via Depends(get_table_repository)
+
+    Returns:
+        ListTables: Use case instance with repository injected
+
+    Example usage in a route:
+        @router.get("/")
+        def list_tables(
+            area: str | None = None,
+            use_case = Depends(get_list_tables_use_case)
+        ):
+            tables = use_case.execute(area=area)
+            return tables
+    """
+    # Create and return the use case with injected repository
+    use_case = ListTables(table_repository=table_repo)
     return use_case
 
 

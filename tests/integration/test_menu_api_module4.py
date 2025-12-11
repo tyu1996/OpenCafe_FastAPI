@@ -372,6 +372,113 @@ class TestMenuAPIModule4:
         assert isinstance(data, dict)
 
 
+class TestSearchEndpoint:
+    """
+    Test suite for the dedicated search endpoint: GET /menu/items/search?q=...
+
+    This endpoint is specified in the syllabus as a separate search route.
+    It requires the 'q' parameter and searches in name and description.
+    """
+
+    def test_search_endpoint_success(self, client):
+        """Test searching via dedicated search endpoint."""
+        # Act: Search for "espresso" using dedicated endpoint
+        response = client.get("/menu/items/search?q=espresso")
+
+        # Assert: Success response
+        assert response.status_code == 200
+
+        # Assert: Results contain search term
+        items = response.json()
+        assert len(items) > 0, "Should find items matching 'espresso'"
+
+        for item in items:
+            text = (item["name"] + " " + item["description"]).lower()
+            assert "espresso" in text
+
+    def test_search_endpoint_case_insensitive(self, client):
+        """Test that dedicated search endpoint is case-insensitive."""
+        # Act: Search with different cases
+        response_lower = client.get("/menu/items/search?q=espresso")
+        response_upper = client.get("/menu/items/search?q=ESPRESSO")
+
+        # Assert: Same results
+        items_lower = response_lower.json()
+        items_upper = response_upper.json()
+        assert len(items_lower) == len(items_upper)
+
+    def test_search_endpoint_no_results(self, client):
+        """Test search endpoint with no matching items."""
+        # Act: Search for non-existent term
+        response = client.get("/menu/items/search?q=xyznonsense")
+
+        # Assert: Should return empty list (not error)
+        assert response.status_code == 200
+        items = response.json()
+        assert items == []
+
+    def test_search_endpoint_missing_q_parameter(self, client):
+        """Test that missing 'q' parameter returns 422 error."""
+        # Act: Call search without required 'q' parameter
+        response = client.get("/menu/items/search")
+
+        # Assert: Should return 422 Unprocessable Entity
+        assert response.status_code == 422
+
+    def test_search_endpoint_with_pagination(self, client):
+        """Test search endpoint with pagination parameters."""
+        # Act: Search with limit
+        response = client.get("/menu/items/search?q=coffee&limit=2&offset=0")
+
+        # Assert: Should respect pagination
+        assert response.status_code == 200
+        items = response.json()
+        assert len(items) <= 2
+
+    def test_search_endpoint_invalid_limit(self, client):
+        """Test search endpoint with invalid limit returns 400."""
+        # Act: Try limit > 100
+        response = client.get("/menu/items/search?q=coffee&limit=101")
+
+        # Assert: Should return 400 Bad Request
+        assert response.status_code == 400
+        data = response.json()
+        assert "limit" in data["detail"].lower()
+
+    def test_search_endpoint_invalid_offset(self, client):
+        """Test search endpoint with negative offset returns 400."""
+        # Act: Try negative offset
+        response = client.get("/menu/items/search?q=coffee&offset=-1")
+
+        # Assert: Should return 400 Bad Request
+        assert response.status_code == 400
+        data = response.json()
+        assert "offset" in data["detail"].lower()
+
+    def test_search_endpoint_with_availability_filter(self, client):
+        """Test search endpoint with availability filter."""
+        # Act: Search with only_available=false
+        response = client.get("/menu/items/search?q=special&only_available=false")
+
+        # Assert: Should succeed
+        assert response.status_code == 200
+
+    def test_search_endpoint_returns_all_fields(self, client):
+        """Test that search results have all required fields."""
+        # Act: Search for known item
+        response = client.get("/menu/items/search?q=espresso")
+
+        # Assert: Check field presence
+        assert response.status_code == 200
+        items = response.json()
+        assert len(items) > 0
+
+        item = items[0]
+        required_fields = ["id", "name", "description", "price", "category", "available"]
+        for field in required_fields:
+            assert field in item, f"Missing field: {field}"
+
+
 # MODULE 4 TEST SUMMARY:
 # These tests verify:
 # ✓ Search functionality (case-insensitive, partial matching)
@@ -383,6 +490,7 @@ class TestMenuAPIModule4:
 # ✓ Combined filters
 # ✓ Edge cases
 # ✓ Response formats
+# ✓ Dedicated search endpoint (GET /menu/items/search?q=...)
 #
 # These are INTEGRATION tests - they test the full stack.
 # They verify that all components work together correctly.

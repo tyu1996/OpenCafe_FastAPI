@@ -114,6 +114,8 @@ def read_root():
         "module": "Module 4: Menu & Table APIs (DB-Backed, Tested)",  # Which lesson this implements
         "endpoints": {  # Directory of available endpoints
             "health": "/health",  # Health check endpoint
+            "menu_categories": "/menu/categories",  # List all categories (MODULE 4)
+            "menu_category_items": "/menu/categories/{category_id}/items",  # Items in category (MODULE 4)
             "menu_items": "/menu/items",  # Menu listing with filters
             "menu_item": "/menu/items/{item_id}",  # Get single menu item (MODULE 4)
             "tables": "/tables",  # Table listing endpoint

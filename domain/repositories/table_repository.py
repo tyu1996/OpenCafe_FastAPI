@@ -51,6 +51,35 @@ class TableRepository(ABC):
         pass  # Abstract method - no implementation here
 
     @abstractmethod
+    def list_tables(self, area: str | None = None) -> List[Table]:
+        """
+        Get tables with optional area filtering.
+
+        MODULE 4 ENHANCEMENT: Added filtering by location/area.
+
+        This method supports filtering tables by their physical location.
+        Useful for helping customers choose their preferred seating area.
+
+        Args:
+            area (str | None): Filter by table location (e.g., "window", "patio", "main-room").
+                              If None, return all tables (same as list_all_tables).
+
+        Returns:
+            List[Table]: List of tables matching the filter (may be empty)
+
+        Use cases:
+        - Customer wants to sit by the window
+        - Staff viewing tables in specific area
+        - Filtering seating options by preference
+
+        Implementation notes for adapters:
+        - Return an empty list if no tables match (don't return None)
+        - Area comparison should be case-insensitive for better UX
+        - If area is None, return all tables
+        """
+        pass  # Abstract method - no implementation here
+
+    @abstractmethod
     def get_table_by_id(self, table_id: str) -> Optional[Table]:
         """
         Get a single table by its unique ID.

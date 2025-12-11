@@ -51,6 +51,36 @@ class SQLAlchemyTableRepository(TableRepository):
         # Convert each database model to domain entity
         return [self._model_to_entity(table) for table in db_tables]
 
+    def list_tables(self, area: str | None = None) -> List[Table]:
+        """
+        Get tables with optional area filtering.
+
+        MODULE 4 ENHANCEMENT: Added filtering by location/area.
+
+        Args:
+            area: Filter by table location (e.g., "window", "patio").
+                  If None, return all tables.
+
+        Returns:
+            List[Table]: Tables matching the filter as domain entities
+        """
+        # Start building query
+        # .query(TableModel) = SELECT * FROM tables
+        query = self._session.query(TableModel)
+
+        # Apply area filter if provided
+        # Uses case-insensitive comparison for better UX
+        if area is not None:
+            # .ilike() is case-insensitive LIKE
+            # This makes "Window", "window", "WINDOW" all match
+            query = query.filter(TableModel.location.ilike(area))
+
+        # Execute query and get results
+        db_tables = query.all()
+
+        # Convert each database model to domain entity
+        return [self._model_to_entity(table) for table in db_tables]
+
     def get_table_by_id(self, table_id: str) -> Optional[Table]:
         """
         Find table by ID.

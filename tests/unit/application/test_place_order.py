@@ -72,6 +72,14 @@ class FakeTableRepository(TableRepository):
     def list_all_tables(self) -> List[Table]:
         return list(self._tables.values())
 
+    def list_tables(self, area: str | None = None) -> List[Table]:
+        """List tables with optional area filter (MODULE 4)."""
+        tables = list(self._tables.values())
+        if area is not None:
+            area_lower = area.lower()
+            tables = [t for t in tables if t.location.lower() == area_lower]
+        return tables
+
     def get_table_by_id(self, table_id: str) -> Optional[Table]:
         return self._tables.get(table_id)
 

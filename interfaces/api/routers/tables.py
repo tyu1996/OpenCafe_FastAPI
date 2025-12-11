@@ -6,15 +6,16 @@ from typing import List
 
 # Import use cases from application layer
 from application.use_cases.get_table import GetTable
+from application.use_cases.list_tables import ListTables  # MODULE 4: New use case
 
 # Import DTOs from schemas directory
 from interfaces.api.schemas.tables import TableResponse
 
 # Import dependency functions
-from interfaces.api.dependencies import get_get_table_use_case, get_table_repository
-
-# Import repository interface for type hints
-from domain.repositories.table_repository import TableRepository
+from interfaces.api.dependencies import (
+    get_get_table_use_case,
+    get_list_tables_use_case,  # MODULE 4: New dependency
+)
 
 
 """
@@ -41,15 +42,27 @@ router = APIRouter(
 
 @router.get("", response_model=List[TableResponse])
 def list_tables(
-    table_repo: TableRepository = Depends(get_table_repository),  # DI for database-backed repo
+    # Query parameter for filtering by area (MODULE 4 ENHANCEMENT)
+    area: str | None = None,  # Filter by location (optional)
+
+    # Dependency injection - FastAPI provides configured use case
+    use_case: ListTables = Depends(get_list_tables_use_case),
 ):
     """
-    List all tables in the cafe.
+    List all tables in the cafe with optional area filtering.
+
+    MODULE 4 ENHANCEMENT: Added area filter parameter.
 
     This endpoint is useful for:
     - Showing seating options to customers
     - Staff viewing available tables
     - Order placement (choosing a table)
+    - Filtering tables by location preference
+
+    Query Parameters:
+        area (str, optional): Filter tables by location.
+                             Examples: "window", "patio", "main-room"
+                             If not provided, returns all tables.
 
     Response example:
     [
@@ -68,23 +81,27 @@ def list_tables(
         ...
     ]
 
-    HOW THIS WORKS (Module 3 - Database-backed):
-    1. FastAPI injects database-backed TableRepository via DI
-    2. Repository queries database and returns List[Table] entities
-    3. We convert entities to DTOs (TableResponse)
-    4. FastAPI serializes to JSON and returns HTTP 200
+    Example Requests:
+        GET /tables
+            -> Returns all tables
 
-    Note: This endpoint takes a shortcut (no use case)
-    In a stricter implementation, we'd create ListTables use case
-    But for simplicity, we use the repository directly via DI
-    In Module 5, we might add filtering:
-    - Filter by availability (occupied vs open)
-    - Filter by capacity (tables seating 4+ people)
-    - Filter by location (patio, window, etc.)
+        GET /tables?area=window
+            -> Returns only tables by the window
+
+        GET /tables?area=patio
+            -> Returns only outdoor patio tables
+
+    HOW THIS WORKS (Module 4 - with use case):
+    1. FastAPI injects ListTables use case via DI
+    2. Use case calls repository with optional area filter
+    3. Repository queries database with filter (if provided)
+    4. We convert entities to DTOs (TableResponse)
+    5. FastAPI serializes to JSON and returns HTTP 200
     """
 
-    # Get all tables from repository (now database-backed via DI)
-    tables = table_repo.list_all_tables()
+    # Execute use case with optional area filter
+    # The use case coordinates with repository to apply filtering
+    tables = use_case.execute(area=area)
 
     # Convert Table entities → TableResponse DTOs
     response = [
